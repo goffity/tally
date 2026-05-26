@@ -4,6 +4,7 @@ import AppKit
 struct MenuContentView: View {
     let store: UsageStore
     @Environment(\.openSettings) private var openSettings
+    @State private var selectedProvider: Provider = .claude
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -13,22 +14,46 @@ struct MenuContentView: View {
             Divider()
             footer
         }
-        .frame(width: 320)
+        .frame(width: 340)
+        .onChange(of: store.summaries) { _, summaries in
+            if !summaries.contains(where: { $0.provider == selectedProvider }),
+               let first = summaries.first?.provider {
+                selectedProvider = first
+            }
+        }
     }
 
     @ViewBuilder
     private var content: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            if store.summaries.isEmpty {
-                emptyState
-            } else {
-                ForEach(store.summaries) { summary in
-                    ProviderSection(summary: summary)
+        if store.summaries.isEmpty {
+            emptyState
+                .padding(16)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        } else {
+            VStack(alignment: .leading, spacing: 12) {
+                providerPicker
+                Divider()
+                if let summary = store.summaries.first(where: { $0.provider == selectedProvider }) {
+                    VStack(alignment: .leading, spacing: 16) {
+                        ForEach(summary.snapshots) { snapshot in
+                            UsageBarRow(snapshot: snapshot)
+                        }
+                    }
                 }
             }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var providerPicker: some View {
+        Picker("", selection: $selectedProvider) {
+            ForEach(store.summaries) { summary in
+                Text(summary.provider.displayName).tag(summary.provider)
+            }
+        }
+        .pickerStyle(.segmented)
+        .labelsHidden()
     }
 
     private var header: some View {
