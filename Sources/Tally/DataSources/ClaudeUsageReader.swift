@@ -20,12 +20,22 @@ import Foundation
 /// }
 /// ```
 struct ClaudeUsageReader: Sendable {
-    /// Default limits — Claude Pro estimates. Override via Settings later.
+    /// Default limits in *cost-weighted units* (see `weight(...)` below) —
+    /// Claude Max plan estimates. Override via Settings later. Calibrate
+    /// by comparing to `/usage` inside Claude Code.
     struct Limits: Sendable {
-        var sessionFiveHourTokens: Double = 220_000
-        var weeklyAllTokens: Double = 5_500_000
-        var weeklySonnetTokens: Double = 4_400_000
+        var sessionFiveHourTokens: Double = 130_000_000
+        var weeklyAllTokens: Double = 400_000_000
+        var weeklySonnetTokens: Double = 300_000_000
     }
+
+    /// Anthropic pricing-derived weights for converting raw token counts
+    /// into a single comparable "cost unit" that mirrors what counts
+    /// toward Claude Code's session/weekly plan limits.
+    private static let inputWeight: Double = 1.0
+    private static let cacheCreateWeight: Double = 1.25
+    private static let cacheReadWeight: Double = 0.1
+    private static let outputWeight: Double = 5.0
 
     var limits = Limits()
     var projectsRoot: URL = URL(fileURLWithPath: NSString(string: "~/.claude/projects").expandingTildeInPath)
@@ -33,13 +43,14 @@ struct ClaudeUsageReader: Sendable {
     func read(now: Date = .now) -> ProviderSummary {
         let events = loadEvents()
 
-        let sessionStart = UsageWindow.rollingHours(5).windowStart(now: now)
-        let weekStart = UsageWindow.calendarWeek.windowStart(now: now)
+        let sessionStart = now.addingTimeInterval(-5 * 3600)
+        let weekStart = now.addingTimeInterval(-7 * 24 * 3600)
 
         var sessionTokens: Double = 0
         var weeklyAll: Double = 0
         var weeklySonnet: Double = 0
         var oldestInSession: Date?
+        var oldestInWeek: Date?
 
         for ev in events {
             if ev.timestamp >= sessionStart {
@@ -50,15 +61,18 @@ struct ClaudeUsageReader: Sendable {
             }
             if ev.timestamp >= weekStart {
                 weeklyAll += ev.totalTokens
+                if oldestInWeek == nil || ev.timestamp < oldestInWeek! {
+                    oldestInWeek = ev.timestamp
+                }
                 if ev.model.lowercased().contains("sonnet") {
                     weeklySonnet += ev.totalTokens
                 }
             }
         }
 
-        // Rolling 5h: reset is 5h after the oldest in-window event (when it "drops off").
+        // Rolling windows: reset is when the oldest in-window event drops off.
         let sessionReset = (oldestInSession ?? now).addingTimeInterval(5 * 3600)
-        let weeklyReset = UsageWindow.calendarWeek.resetsAt(now: now)
+        let weeklyReset = (oldestInWeek ?? now).addingTimeInterval(7 * 24 * 3600)
 
         let snapshots: [UsageSnapshot] = [
             UsageSnapshot(
@@ -74,7 +88,7 @@ struct ClaudeUsageReader: Sendable {
                 provider: .claude,
                 title: "Weekly",
                 subtitle: "all models",
-                window: .calendarWeek,
+                window: .rollingHours(7 * 24),
                 used: weeklyAll,
                 limit: limits.weeklyAllTokens,
                 resetsAt: weeklyReset
@@ -83,7 +97,7 @@ struct ClaudeUsageReader: Sendable {
                 provider: .claude,
                 title: "Weekly · Sonnet",
                 subtitle: "Sonnet only",
-                window: .calendarWeek,
+                window: .rollingHours(7 * 24),
                 used: weeklySonnet,
                 limit: limits.weeklySonnetTokens,
                 resetsAt: weeklyReset
@@ -137,7 +151,10 @@ struct ClaudeUsageReader: Sendable {
             let cacheCreate = (usage["cache_creation_input_tokens"] as? Double) ?? 0
             let cacheRead = (usage["cache_read_input_tokens"] as? Double) ?? 0
             let outTok = (usage["output_tokens"] as? Double) ?? 0
-            let total = inTok + cacheCreate + cacheRead + outTok
+            let total = inTok * Self.inputWeight
+                + cacheCreate * Self.cacheCreateWeight
+                + cacheRead * Self.cacheReadWeight
+                + outTok * Self.outputWeight
             guard total > 0 else { return }
 
             let model = (message["model"] as? String) ?? (raw["model"] as? String) ?? ""
