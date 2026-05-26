@@ -120,6 +120,8 @@ private struct LimitField: View {
     @Binding var valueInTokens: Double
     let currentUsed: Double?
 
+    @State private var showCalibrate = false
+
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 8) {
@@ -132,6 +134,14 @@ private struct LimitField: View {
                 Text("M")
                     .foregroundStyle(.secondary)
                     .frame(width: 16, alignment: .leading)
+                Button {
+                    showCalibrate = true
+                } label: {
+                    Image(systemName: "scope")
+                }
+                .buttonStyle(.borderless)
+                .help("Calibrate from /usage")
+                .disabled((currentUsed ?? 0) <= 0)
             }
             if let currentUsed {
                 Text(usageHint(currentUsed))
@@ -140,6 +150,17 @@ private struct LimitField: View {
             }
         }
         .padding(.vertical, 2)
+        .popover(isPresented: $showCalibrate, arrowEdge: .trailing) {
+            CalibrationPopover(
+                label: label,
+                currentUsed: currentUsed ?? 0,
+                onCalibrate: { percent in
+                    let used = currentUsed ?? 0
+                    guard percent > 0, used > 0 else { return }
+                    valueInTokens = used / (percent / 100.0)
+                }
+            )
+        }
     }
 
     private var millions: Binding<Double> {
@@ -153,6 +174,66 @@ private struct LimitField: View {
         let pct = valueInTokens > 0 ? Int(((used / valueInTokens) * 100).rounded()) : 0
         let usedM = used / 1_000_000
         return String(format: "now: %.1fM tokens · %d%%", usedM, pct)
+    }
+}
+
+private struct CalibrationPopover: View {
+    let label: String
+    let currentUsed: Double
+    let onCalibrate: (Double) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var percentString: String = ""
+
+    private var parsedPercent: Double? {
+        guard let v = Double(percentString), v > 0, v <= 100 else { return nil }
+        return v
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Calibrate \(label)")
+                .font(.headline)
+            Text("Open `/usage` in Claude Code and enter the percent it reports for this window. Tally will back-calculate the limit from your current usage of \(format(currentUsed)).")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            HStack {
+                TextField("e.g. 7", text: $percentString)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(width: 80)
+                    .multilineTextAlignment(.trailing)
+                Text("%")
+                    .foregroundStyle(.secondary)
+            }
+
+            if let p = parsedPercent {
+                let implied = currentUsed / (p / 100.0)
+                Text(String(format: "Implied limit: %.1fM tokens", implied / 1_000_000))
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+            }
+
+            HStack {
+                Spacer()
+                Button("Cancel") { dismiss() }
+                Button("Calibrate") {
+                    if let p = parsedPercent {
+                        onCalibrate(p)
+                        dismiss()
+                    }
+                }
+                .keyboardShortcut(.defaultAction)
+                .disabled(parsedPercent == nil)
+            }
+        }
+        .padding(16)
+        .frame(width: 320)
+    }
+
+    private func format(_ value: Double) -> String {
+        String(format: "%.1fM tokens", value / 1_000_000)
     }
 }
 
