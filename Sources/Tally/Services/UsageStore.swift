@@ -10,16 +10,22 @@ final class UsageStore {
 
     private let claudeReader = ClaudeUsageReader()
     private let codexReader = CodexUsageReader()
+    private let settings: AppSettings
+
+    init(settings: AppSettings) {
+        self.settings = settings
+    }
 
     func refresh() {
         guard !isRefreshing else { return }
         isRefreshing = true
         let claude = claudeReader
         let codex = codexReader
+        let claudeLimits = settings.claudeLimits
         Task {
             let results = await Task.detached(priority: .userInitiated) {
                 let optionals: [ProviderSummary?] = [
-                    claude.read(),
+                    claude.read(limits: claudeLimits),
                     codex.read()
                 ]
                 return optionals.compactMap { $0 }

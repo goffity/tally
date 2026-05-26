@@ -20,9 +20,8 @@ import Foundation
 /// }
 /// ```
 struct ClaudeUsageReader: Sendable {
-    /// Default limits in *cost-weighted units* (see `weight(...)` below) —
-    /// Claude Max plan estimates. Override via Settings later. Calibrate
-    /// by comparing to `/usage` inside Claude Code.
+    /// Cost-weighted token limits per window. Defaults mirror Claude Max plan
+    /// observations; users can tune them in Settings.
     struct Limits: Sendable {
         var sessionFiveHourTokens: Double = 130_000_000
         var weeklyAllTokens: Double = 400_000_000
@@ -37,10 +36,9 @@ struct ClaudeUsageReader: Sendable {
     private static let cacheReadWeight: Double = 0.1
     private static let outputWeight: Double = 5.0
 
-    var limits = Limits()
     var projectsRoot: URL = URL(fileURLWithPath: NSString(string: "~/.claude/projects").expandingTildeInPath)
 
-    func read(now: Date = .now) -> ProviderSummary {
+    func read(limits: Limits, now: Date = .now) -> ProviderSummary {
         let events = loadEvents()
 
         let sessionStart = now.addingTimeInterval(-5 * 3600)

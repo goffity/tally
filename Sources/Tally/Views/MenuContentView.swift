@@ -3,6 +3,7 @@ import AppKit
 
 struct MenuContentView: View {
     let store: UsageStore
+    @Environment(\.openSettings) private var openSettings
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -72,7 +73,8 @@ struct MenuContentView: View {
     private var footer: some View {
         VStack(alignment: .leading, spacing: 4) {
             menuRow(systemImage: "gearshape", title: "Settings…") {
-                // TODO: open settings window (Phase 3)
+                NSApp.activate(ignoringOtherApps: true)
+                openSettings()
             }
             menuRow(systemImage: "power", title: "Quit") {
                 NSApplication.shared.terminate(nil)
