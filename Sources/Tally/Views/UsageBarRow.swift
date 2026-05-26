@@ -18,9 +18,13 @@ struct UsageBarRow: View {
             ProgressBar(value: snapshot.percent, color: barColor)
                 .frame(height: 6)
 
+            Text(usageLine)
+                .font(.caption.monospacedDigit())
+                .foregroundStyle(.secondary)
+
             Text(footerLine)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.tertiary)
 
             if snapshot.isEstimate {
                 Text("estimate · counted from local logs")
@@ -45,6 +49,41 @@ struct UsageBarRow: View {
 
     private var footerLine: String {
         "\(snapshot.subtitle) · \(resetPhrase)"
+    }
+
+    private var usageLine: String {
+        let unit = snapshot.unit == .requests ? "requests" : "tokens"
+        return "\(format(snapshot.used)) / \(format(snapshot.limit)) \(unit)"
+    }
+
+    private func format(_ value: Double) -> String {
+        if snapshot.unit == .requests {
+            return Self.intFormatter.string(from: NSNumber(value: value)) ?? "\(Int(value))"
+        }
+        return Self.compactTokens(value)
+    }
+
+    private static let intFormatter: NumberFormatter = {
+        let f = NumberFormatter()
+        f.numberStyle = .decimal
+        f.maximumFractionDigits = 0
+        return f
+    }()
+
+    private static func compactTokens(_ value: Double) -> String {
+        let abs = Swift.abs(value)
+        switch abs {
+        case 0..<1_000:
+            return String(Int(value.rounded()))
+        case 1_000..<10_000:
+            return String(format: "%.1fk", value / 1_000)
+        case 10_000..<1_000_000:
+            return String(format: "%.0fk", value / 1_000)
+        case 1_000_000..<10_000_000:
+            return String(format: "%.2fM", value / 1_000_000)
+        default:
+            return String(format: "%.1fM", value / 1_000_000)
+        }
     }
 
     private var resetPhrase: String {
