@@ -17,7 +17,7 @@ struct TallyApp: App {
             MenuContentView(store: store)
                 .onAppear {
                     if scheduler == nil {
-                        let s = RefreshScheduler(store: store, interval: 30)
+                        let s = RefreshScheduler(store: store)
                         s.start()
                         scheduler = s
                     }
