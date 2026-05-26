@@ -6,12 +6,58 @@ struct SettingsView: View {
 
     var body: some View {
         TabView {
+            GeneralSettingsTab()
+                .tabItem { Label("General", systemImage: "gearshape") }
             ClaudeSettingsTab(settings: settings, store: store)
                 .tabItem { Label("Claude", systemImage: "sparkle") }
             AboutTab()
                 .tabItem { Label("About", systemImage: "info.circle") }
         }
         .frame(width: 520, height: 380)
+    }
+}
+
+private struct GeneralSettingsTab: View {
+    @State private var launchAtLogin = LaunchAtLoginService.isEnabled
+    @State private var statusMessage: String?
+    @State private var errorMessage: String?
+
+    var body: some View {
+        Form {
+            Section {
+                Toggle("Launch Tally at login", isOn: Binding(
+                    get: { launchAtLogin },
+                    set: { newValue in
+                        let result = LaunchAtLoginService.setEnabled(newValue)
+                        switch result {
+                        case .success:
+                            launchAtLogin = LaunchAtLoginService.isEnabled
+                            errorMessage = nil
+                            statusMessage = LaunchAtLoginService.statusDescription
+                        case .failure(let error):
+                            launchAtLogin = LaunchAtLoginService.isEnabled
+                            errorMessage = error.localizedDescription
+                        }
+                    }
+                ))
+                if let errorMessage {
+                    Text(errorMessage)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                } else if let statusMessage {
+                    Text(statusMessage)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            } header: {
+                Text("Startup")
+            } footer: {
+                Text("Tally needs to be in /Applications for launch-at-login to work reliably. First-time toggle may prompt for approval in System Settings → General → Login Items.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .formStyle(.grouped)
     }
 }
 
