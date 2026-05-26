@@ -1,5 +1,7 @@
 # Tally
 
+[![build](https://github.com/goffity/tally/actions/workflows/build.yml/badge.svg)](https://github.com/goffity/tally/actions/workflows/build.yml)
+
 A macOS menu-bar app that tallies how many tokens / requests you've spent on
 each AI tool (Claude Code, Codex, Gemini, Copilot) by reading **local log files
 only** — no API keys, no logins, no network calls.
