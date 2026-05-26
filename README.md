@@ -43,19 +43,31 @@ swift build            # compile only
 ./Scripts/bundle.sh    # produce build/Tally.app
 ```
 
-## Cutting a release
+## Branching & release flow
 
-Releases are built and published automatically by
-[`.github/workflows/release.yml`](.github/workflows/release.yml) on tag push.
-
-```bash
-git tag v0.1.0
-git push --tags
+```
+feature/*  ─┐
+fix/*      ─┼──►  develop  ──►  main  ──►  auto-tag + release
+chore/*    ─┘                      │
+                                   └──►  manual `git tag vX.Y.Z` also works
 ```
 
-That triggers CI to build `Tally.app`, stamp the version into `Info.plist`,
-package both `Tally-<version>.zip` and `Tally-<version>.dmg`, and attach them
-to a new GitHub Release with auto-generated release notes.
+- **`develop`** is the default branch and integration target. Branch off it
+  for any work: `feature/<short-name>`, `fix/<short-name>`, etc.
+- Open PRs into `develop`. Merge when CI is green.
+- When ready to ship, open a PR from `develop` → `main`. Merging it triggers
+  [`release.yml`](.github/workflows/release.yml), which parses conventional
+  commits since the last tag and:
+    - bumps **minor** for any `feat:` commit,
+    - bumps **patch** for `fix:` or `perf:`,
+    - bumps **major** if any commit has a `BREAKING CHANGE:` footer,
+    - **skips releasing** if all commits are housekeeping
+      (`chore:`, `ci:`, `docs:`, `refactor:`, `style:`, `test:`).
+- The workflow then builds `Tally.app`, stamps the new version, packages
+  `Tally-<version>.zip` + `Tally-<version>.dmg`, creates the matching
+  `vX.Y.Z` tag, and publishes a GitHub Release with auto-generated notes.
+- For a hotfix or pre-release, you can still bypass `develop` by pushing a
+  tag directly: `git tag v0.2.1 && git push --tags`.
 
 For a local dry-run without publishing:
 

@@ -2,14 +2,57 @@ name: release
 
 on:
   push:
+    branches: [main]
     tags: ['v*']
 
 permissions:
   contents: write
 
 jobs:
+  version:
+    name: resolve version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.out.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Manual tag push wins outright — use the tag's version verbatim.
+      - name: From pushed tag
+        id: from_tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+
+      # Auto-bump on main: parse conventional commits since the last tag.
+      # feat:  -> minor, fix:/perf: -> patch, BREAKING CHANGE -> major.
+      # Anything else (chore:, ci:, docs:, refactor:, style:, test:) is a no-op.
+      - name: Auto-bump from conventional commits
+        id: from_commits
+        if: github.ref == 'refs/heads/main'
+        uses: mathieudutour/github-tag-action@v6.2
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          default_bump: false
+          release_branches: main
+          tag_prefix: v
+
+      - name: Pick version
+        id: out
+        run: |
+          if [ -n "${{ steps.from_tag.outputs.version }}" ]; then
+            echo "version=${{ steps.from_tag.outputs.version }}" >> "$GITHUB_OUTPUT"
+          elif [ -n "${{ steps.from_commits.outputs.new_version }}" ]; then
+            echo "version=${{ steps.from_commits.outputs.new_version }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "No release-worthy commits since last tag; skipping release."
+          fi
+
   release:
-    name: build + publish release
+    name: build + publish
+    needs: version
+    if: needs.version.outputs.version != ''
     runs-on: macos-15
     timeout-minutes: 20
 
@@ -21,10 +64,6 @@ jobs:
         with:
           xcode-version: latest-stable
 
-      - name: Extract version from tag
-        id: version
-        run: echo "version=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
-
       - name: Build Tally.app
         env:
           CONFIG: release
@@ -32,8 +71,8 @@ jobs:
 
       - name: Stamp version into Info.plist
         run: |
-          plutil -replace CFBundleShortVersionString -string "${{ steps.version.outputs.version }}" build/Tally.app/Contents/Info.plist
-          plutil -replace CFBundleVersion              -string "${{ steps.version.outputs.version }}" build/Tally.app/Contents/Info.plist
+          plutil -replace CFBundleShortVersionString -string "${{ needs.version.outputs.version }}" build/Tally.app/Contents/Info.plist
+          plutil -replace CFBundleVersion              -string "${{ needs.version.outputs.version }}" build/Tally.app/Contents/Info.plist
 
       - name: Re-sign bundle after Info.plist edit
         run: codesign --force --deep --sign - build/Tally.app
@@ -42,21 +81,22 @@ jobs:
         run: |
           ditto -c -k --sequesterRsrc --keepParent \
             build/Tally.app \
-            "build/Tally-${{ steps.version.outputs.version }}.zip"
+            "build/Tally-${{ needs.version.outputs.version }}.zip"
 
       - name: Package .dmg
         run: |
           hdiutil create -volname Tally \
             -srcfolder build/Tally.app \
             -ov -format UDZO \
-            "build/Tally-${{ steps.version.outputs.version }}.dmg"
+            "build/Tally-${{ needs.version.outputs.version }}.dmg"
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: v${{ needs.version.outputs.version }}
           files: |
-            build/Tally-${{ steps.version.outputs.version }}.zip
-            build/Tally-${{ steps.version.outputs.version }}.dmg
+            build/Tally-${{ needs.version.outputs.version }}.zip
+            build/Tally-${{ needs.version.outputs.version }}.dmg
           generate_release_notes: true
           draft: false
           prerelease: false
