@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 struct SettingsView: View {
     let settings: AppSettings
@@ -336,9 +337,10 @@ private struct CalibrationPopover: View {
 private struct AboutTab: View {
     var body: some View {
         VStack(spacing: 12) {
-            Image(systemName: "chart.bar.fill")
-                .font(.system(size: 48))
-                .foregroundStyle(.tint)
+            Image(nsImage: NSApp.applicationIconImage)
+                .resizable()
+                .interpolation(.high)
+                .frame(width: 96, height: 96)
             Text("Tally")
                 .font(.title.bold())
             Text("Local-first menu-bar tracker for AI token usage")

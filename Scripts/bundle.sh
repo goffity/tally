@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build the SwiftPM executable and wrap it as TokenSpend.app for menu-bar use.
+# Build the SwiftPM executable and wrap it as Tally.app for menu-bar use.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -24,6 +24,9 @@ mkdir -p "$APP_BUNDLE/Contents/MacOS"
 mkdir -p "$APP_BUNDLE/Contents/Resources"
 cp "$BIN_PATH" "$APP_BUNDLE/Contents/MacOS/$APP_NAME"
 cp "$ROOT/Resources/Info.plist" "$APP_BUNDLE/Contents/Info.plist"
+if [[ -f "$ROOT/Resources/AppIcon.icns" ]]; then
+    cp "$ROOT/Resources/AppIcon.icns" "$APP_BUNDLE/Contents/Resources/AppIcon.icns"
+fi
 
 # Ad-hoc sign so Gatekeeper lets the app run locally without quarantine prompts.
 codesign --force --deep --sign - "$APP_BUNDLE" >/dev/null 2>&1 || true
