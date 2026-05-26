@@ -9,16 +9,22 @@ final class UsageStore {
     private(set) var isRefreshing: Bool = false
 
     private let claudeReader = ClaudeUsageReader()
+    private let codexReader = CodexUsageReader()
 
     func refresh() {
         guard !isRefreshing else { return }
         isRefreshing = true
-        let reader = claudeReader
+        let claude = claudeReader
+        let codex = codexReader
         Task {
-            let claude = await Task.detached(priority: .userInitiated) {
-                reader.read()
+            let results = await Task.detached(priority: .userInitiated) {
+                let optionals: [ProviderSummary?] = [
+                    claude.read(),
+                    codex.read()
+                ]
+                return optionals.compactMap { $0 }
             }.value
-            self.summaries = [claude]
+            self.summaries = results
             self.lastUpdated = Date()
             self.isRefreshing = false
         }

@@ -18,13 +18,15 @@ struct UsageBarRow: View {
             ProgressBar(value: snapshot.percent, color: barColor)
                 .frame(height: 6)
 
-            Text(usageLine)
-                .font(.caption.monospacedDigit())
-                .foregroundStyle(.secondary)
+            if let usage = usageLine {
+                Text(usage)
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+            }
 
             Text(footerLine)
                 .font(.caption)
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(snapshot.hasDirectPercent ? .secondary : .tertiary)
 
             if snapshot.isEstimate {
                 Text("estimate · counted from local logs")
@@ -48,11 +50,19 @@ struct UsageBarRow: View {
     }
 
     private var footerLine: String {
-        "\(snapshot.subtitle) · \(resetPhrase)"
+        let reset = resetPhrase
+        if reset.isEmpty || snapshot.subtitle.contains("no recent usage") {
+            return snapshot.subtitle
+        }
+        return "\(snapshot.subtitle) · \(reset)"
     }
 
-    private var usageLine: String {
+    private var usageLine: String? {
         let unit = snapshot.unit == .requests ? "requests" : "tokens"
+        if snapshot.hasDirectPercent {
+            guard snapshot.used > 0 else { return nil }
+            return "\(format(snapshot.used)) \(unit) this session"
+        }
         return "\(format(snapshot.used)) / \(format(snapshot.limit)) \(unit)"
     }
 
