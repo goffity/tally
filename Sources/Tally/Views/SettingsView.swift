@@ -12,6 +12,8 @@ struct SettingsView: View {
                 .tabItem { Label("Claude", systemImage: "sparkle") }
             GeminiSettingsTab(settings: settings, store: store)
                 .tabItem { Label("Gemini", systemImage: "diamond") }
+            CopilotSettingsTab(settings: settings, store: store)
+                .tabItem { Label("Copilot", systemImage: "person.fill") }
             AboutTab()
                 .tabItem { Label("About", systemImage: "info.circle") }
         }
@@ -157,6 +159,52 @@ private struct GeminiSettingsTab: View {
     private var currentUsed: Double? {
         store.summaries
             .first(where: { $0.provider == .gemini })?
+            .snapshots
+            .first?
+            .used
+    }
+}
+
+private struct CopilotSettingsTab: View {
+    @Bindable var settings: AppSettings
+    let store: UsageStore
+
+    var body: some View {
+        Form {
+            Section {
+                HStack(spacing: 8) {
+                    Text("Monthly premium requests")
+                    Spacer()
+                    TextField("", value: $settings.copilotMonthlyPremiumRequests, format: .number.precision(.fractionLength(0)))
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 90)
+                        .multilineTextAlignment(.trailing)
+                    Text("req")
+                        .foregroundStyle(.secondary)
+                        .frame(width: 28, alignment: .leading)
+                }
+                if let current = currentUsed {
+                    let pct = settings.copilotMonthlyPremiumRequests > 0
+                        ? Int(((current / settings.copilotMonthlyPremiumRequests) * 100).rounded())
+                        : 0
+                    Text(String(format: "this month: %d requests · %d%%", Int(current), pct))
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                }
+            } header: {
+                Text("Copilot plan limits")
+            } footer: {
+                Text("Tally counts `totalPremiumRequests` from each Copilot session's shutdown event. Default 300 matches Copilot Pro; bump to 1500 for Pro+, or your plan's actual cap. In-flight sessions are not counted until they end.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .formStyle(.grouped)
+    }
+
+    private var currentUsed: Double? {
+        store.summaries
+            .first(where: { $0.provider == .copilot })?
             .snapshots
             .first?
             .used

@@ -11,6 +11,7 @@ final class UsageStore {
     private let claudeReader = ClaudeUsageReader()
     private let codexReader = CodexUsageReader()
     private let geminiReader = GeminiUsageReader()
+    private let copilotReader = CopilotUsageReader()
     private let settings: AppSettings
 
     init(settings: AppSettings) {
@@ -23,14 +24,17 @@ final class UsageStore {
         let claude = claudeReader
         let codex = codexReader
         let gemini = geminiReader
+        let copilot = copilotReader
         let claudeLimits = settings.claudeLimits
         let geminiLimits = settings.geminiLimits
+        let copilotLimits = settings.copilotLimits
         Task {
             let results = await Task.detached(priority: .userInitiated) {
                 let optionals: [ProviderSummary?] = [
                     claude.read(limits: claudeLimits),
                     codex.read(),
-                    gemini.read(limits: geminiLimits)
+                    gemini.read(limits: geminiLimits),
+                    copilot.read(limits: copilotLimits)
                 ]
                 return optionals.compactMap { $0 }
             }.value

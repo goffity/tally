@@ -12,6 +12,7 @@ final class AppSettings {
         static let claudeWeeklyAllLimit: Double = 400_000_000
         static let claudeWeeklySonnetLimit: Double = 300_000_000
         static let geminiDailyRequests: Double = 1000
+        static let copilotMonthlyPremiumRequests: Double = 300
     }
 
     private enum Key {
@@ -19,6 +20,7 @@ final class AppSettings {
         static let claudeWeeklyAllLimit = "claude.weeklyAllLimit"
         static let claudeWeeklySonnetLimit = "claude.weeklySonnetLimit"
         static let geminiDailyRequests = "gemini.dailyRequests"
+        static let copilotMonthlyPremiumRequests = "copilot.monthlyPremiumRequests"
     }
 
     var claudeSessionLimit: Double {
@@ -37,12 +39,17 @@ final class AppSettings {
         didSet { UserDefaults.standard.set(geminiDailyRequests, forKey: Key.geminiDailyRequests) }
     }
 
+    var copilotMonthlyPremiumRequests: Double {
+        didSet { UserDefaults.standard.set(copilotMonthlyPremiumRequests, forKey: Key.copilotMonthlyPremiumRequests) }
+    }
+
     init() {
         let d = UserDefaults.standard
         self.claudeSessionLimit = Self.load(d, Key.claudeSessionLimit, default: Defaults.claudeSessionLimit)
         self.claudeWeeklyAllLimit = Self.load(d, Key.claudeWeeklyAllLimit, default: Defaults.claudeWeeklyAllLimit)
         self.claudeWeeklySonnetLimit = Self.load(d, Key.claudeWeeklySonnetLimit, default: Defaults.claudeWeeklySonnetLimit)
         self.geminiDailyRequests = Self.load(d, Key.geminiDailyRequests, default: Defaults.geminiDailyRequests)
+        self.copilotMonthlyPremiumRequests = Self.load(d, Key.copilotMonthlyPremiumRequests, default: Defaults.copilotMonthlyPremiumRequests)
     }
 
     func resetClaudeLimits() {
@@ -63,6 +70,12 @@ final class AppSettings {
     var geminiLimits: GeminiUsageReader.Limits {
         var limits = GeminiUsageReader.Limits()
         limits.dailyRequests = geminiDailyRequests
+        return limits
+    }
+
+    var copilotLimits: CopilotUsageReader.Limits {
+        var limits = CopilotUsageReader.Limits()
+        limits.monthlyPremiumRequests = copilotMonthlyPremiumRequests
         return limits
     }
 
