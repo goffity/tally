@@ -10,6 +10,8 @@ struct SettingsView: View {
                 .tabItem { Label("General", systemImage: "gearshape") }
             ClaudeSettingsTab(settings: settings, store: store)
                 .tabItem { Label("Claude", systemImage: "sparkle") }
+            GeminiSettingsTab(settings: settings, store: store)
+                .tabItem { Label("Gemini", systemImage: "diamond") }
             AboutTab()
                 .tabItem { Label("About", systemImage: "info.circle") }
         }
@@ -111,6 +113,52 @@ private struct ClaudeSettingsTab: View {
             .first(where: { $0.provider == .claude })?
             .snapshots
             .first(where: { $0.title == title })?
+            .used
+    }
+}
+
+private struct GeminiSettingsTab: View {
+    @Bindable var settings: AppSettings
+    let store: UsageStore
+
+    var body: some View {
+        Form {
+            Section {
+                HStack(spacing: 8) {
+                    Text("Daily requests")
+                    Spacer()
+                    TextField("", value: $settings.geminiDailyRequests, format: .number.precision(.fractionLength(0)))
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 90)
+                        .multilineTextAlignment(.trailing)
+                    Text("req")
+                        .foregroundStyle(.secondary)
+                        .frame(width: 28, alignment: .leading)
+                }
+                if let current = currentUsed {
+                    let pct = settings.geminiDailyRequests > 0
+                        ? Int(((current / settings.geminiDailyRequests) * 100).rounded())
+                        : 0
+                    Text(String(format: "today: %d requests · %d%%", Int(current), pct))
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                }
+            } header: {
+                Text("Gemini plan limits")
+            } footer: {
+                Text("Gemini CLI doesn't record token counts locally — Tally counts user messages in the last 24 hours as a proxy for requests. Free tier is documented at ~1000 req/day; bump this number if you're on a paid plan.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .formStyle(.grouped)
+    }
+
+    private var currentUsed: Double? {
+        store.summaries
+            .first(where: { $0.provider == .gemini })?
+            .snapshots
+            .first?
             .used
     }
 }

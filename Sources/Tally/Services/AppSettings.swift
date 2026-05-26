@@ -11,12 +11,14 @@ final class AppSettings {
         static let claudeSessionLimit: Double = 130_000_000
         static let claudeWeeklyAllLimit: Double = 400_000_000
         static let claudeWeeklySonnetLimit: Double = 300_000_000
+        static let geminiDailyRequests: Double = 1000
     }
 
     private enum Key {
         static let claudeSessionLimit = "claude.sessionLimit"
         static let claudeWeeklyAllLimit = "claude.weeklyAllLimit"
         static let claudeWeeklySonnetLimit = "claude.weeklySonnetLimit"
+        static let geminiDailyRequests = "gemini.dailyRequests"
     }
 
     var claudeSessionLimit: Double {
@@ -31,11 +33,16 @@ final class AppSettings {
         didSet { UserDefaults.standard.set(claudeWeeklySonnetLimit, forKey: Key.claudeWeeklySonnetLimit) }
     }
 
+    var geminiDailyRequests: Double {
+        didSet { UserDefaults.standard.set(geminiDailyRequests, forKey: Key.geminiDailyRequests) }
+    }
+
     init() {
         let d = UserDefaults.standard
         self.claudeSessionLimit = Self.load(d, Key.claudeSessionLimit, default: Defaults.claudeSessionLimit)
         self.claudeWeeklyAllLimit = Self.load(d, Key.claudeWeeklyAllLimit, default: Defaults.claudeWeeklyAllLimit)
         self.claudeWeeklySonnetLimit = Self.load(d, Key.claudeWeeklySonnetLimit, default: Defaults.claudeWeeklySonnetLimit)
+        self.geminiDailyRequests = Self.load(d, Key.geminiDailyRequests, default: Defaults.geminiDailyRequests)
     }
 
     func resetClaudeLimits() {
@@ -50,6 +57,12 @@ final class AppSettings {
         limits.sessionFiveHourTokens = claudeSessionLimit
         limits.weeklyAllTokens = claudeWeeklyAllLimit
         limits.weeklySonnetTokens = claudeWeeklySonnetLimit
+        return limits
+    }
+
+    var geminiLimits: GeminiUsageReader.Limits {
+        var limits = GeminiUsageReader.Limits()
+        limits.dailyRequests = geminiDailyRequests
         return limits
     }
 
