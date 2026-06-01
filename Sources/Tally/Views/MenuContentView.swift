@@ -32,6 +32,7 @@ struct MenuContentView: View {
         } else {
             VStack(alignment: .leading, spacing: 12) {
                 providerPicker
+                fallbackNotice
                 Divider()
                 if let summary = store.summaries.first(where: { $0.provider == selectedProvider }) {
                     VStack(alignment: .leading, spacing: 16) {
@@ -43,6 +44,19 @@ struct MenuContentView: View {
             }
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    @ViewBuilder
+    private var fallbackNotice: some View {
+        if case .localFallback(let reason) = store.sources[selectedProvider] {
+            HStack(spacing: 6) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.orange)
+                Text("Using local logs · API \(reason)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
     }
 
