@@ -22,9 +22,15 @@ page (DMG or `.app.zip`).
 
 1. Download `Tally-<version>.dmg` (or `.zip`).
 2. Move `Tally.app` into `/Applications`.
-3. **First launch:** right-click → Open. macOS Gatekeeper will warn that the
-   app is unsigned; clicking Open whitelists it. From then on, double-click
-   works normally.
+3. **Clear the Gatekeeper quarantine flag** — Tally is not yet signed with an
+   Apple Developer ID, and on macOS 15.4+ the right-click → Open bypass is
+   gone. Run this once after install:
+   ```sh
+   xattr -dr com.apple.quarantine /Applications/Tally.app
+   ```
+   After this, double-click `Tally.app` opens it normally. See
+   [issue #7](https://github.com/goffity/tally/issues/7) for context and a
+   GUI alternative via System Settings → Privacy & Security.
 4. Optionally enable launch-at-login from Tally → Settings → General.
 
 ## Build from source
