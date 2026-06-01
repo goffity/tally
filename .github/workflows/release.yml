@@ -97,6 +97,8 @@ jobs:
           files: |
             build/Tally-${{ needs.version.outputs.version }}.zip
             build/Tally-${{ needs.version.outputs.version }}.dmg
+          body_path: .github/release-notes-header.md
+          append_body: true
           generate_release_notes: true
           draft: false
           prerelease: false
