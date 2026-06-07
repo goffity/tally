@@ -18,7 +18,7 @@ import Foundation
 struct ClaudeApiUsageReader: Sendable {
     enum ReadError: Error, Equatable {
         case missingCredentials
-        case unauthorized            // 401 — token expired/invalid; need refresh
+        case unauthorized  // 401 — token expired/invalid; need refresh
         case http(Int)
         case transport
         case decode
@@ -38,6 +38,10 @@ struct ClaudeApiUsageReader: Sendable {
         request.setValue("Bearer \(creds.accessToken)", forHTTPHeaderField: "Authorization")
         request.setValue("oauth-2025-04-20", forHTTPHeaderField: "anthropic-beta")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        // Mandatory: without a claude-code User-Agent the endpoint drops us into
+        // a harsh 429 bucket immediately. Version is resolved from the installed CLI.
+        request.setValue(ClaudeCodeEnvironment.userAgent, forHTTPHeaderField: "User-Agent")
         request.timeoutInterval = 10
 
         let data: Data
@@ -116,7 +120,7 @@ struct ClaudeApiUsageReader: Sendable {
             title: title,
             subtitle: subtitle,
             window: .rollingHours(title == "Session" ? 5 : 7 * 24),
-            used: 0,                       // API gives us the % directly
+            used: 0,  // API gives us the % directly
             limit: 0,
             unit: .tokens,
             resetsAt: resets,
@@ -126,16 +130,17 @@ struct ClaudeApiUsageReader: Sendable {
 
     private func mapOverage(_ dict: [String: Any]?) -> UsageSnapshot? {
         guard let dict,
-              (dict["is_enabled"] as? Bool) == true,
-              let monthlyLimit = dict["monthly_limit"] as? Double,
-              monthlyLimit > 0
+            (dict["is_enabled"] as? Bool) == true,
+            let monthlyLimit = dict["monthly_limit"] as? Double,
+            monthlyLimit > 0
         else { return nil }
 
         let used = (dict["used_credits"] as? Double) ?? 0
         let currency = (dict["currency"] as? String) ?? "USD"
 
         let calendar = Calendar.current
-        let monthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: Date())) ?? Date()
+        let monthStart =
+            calendar.date(from: calendar.dateComponents([.year, .month], from: Date())) ?? Date()
         let nextMonth = calendar.date(byAdding: .month, value: 1, to: monthStart) ?? Date()
 
         return UsageSnapshot(
@@ -145,7 +150,7 @@ struct ClaudeApiUsageReader: Sendable {
             window: .calendarMonth,
             used: used,
             limit: monthlyLimit,
-            unit: .requests,                // shows as plain number with comma separator
+            unit: .requests,  // shows as plain number with comma separator
             resetsAt: nextMonth,
             isEstimate: false
         )
@@ -157,7 +162,30 @@ struct ClaudeApiUsageReader: Sendable {
         iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         if let d = iso.date(from: s) { return d }
         iso.formatOptions = [.withInternetDateTime]
-        return iso.date(from: s)
+        if let d = iso.date(from: s) { return d }
+        // The endpoint returns microsecond precision (6 fractional digits), which
+        // ISO8601DateFormatter can't parse — it only handles 3. Normalize and retry.
+        if let normalized = Self.normalizeFractionalSeconds(s) {
+            iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            return iso.date(from: normalized)
+        }
+        return nil
+    }
+
+    /// Truncates over-long fractional seconds to 3 digits, e.g.
+    /// `…:00.812095+00:00` -> `…:00.812+00:00`. Returns nil when there's nothing
+    /// to normalize.
+    private static func normalizeFractionalSeconds(_ s: String) -> String? {
+        guard let dot = s.firstIndex(of: ".") else { return nil }
+        var end = s.index(after: dot)
+        var digits = 0
+        while end < s.endIndex, s[end].isNumber {
+            end = s.index(after: end)
+            digits += 1
+        }
+        guard digits > 3 else { return nil }
+        let keep = s.index(dot, offsetBy: 4)  // dot + 3 digits
+        return String(s[s.startIndex..<keep]) + String(s[end...])
     }
 
     private enum Key {
