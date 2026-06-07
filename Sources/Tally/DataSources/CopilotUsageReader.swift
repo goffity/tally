@@ -13,7 +13,8 @@ struct CopilotUsageReader: Sendable {
         var monthlyPremiumRequests: Double = 300
     }
 
-    var sessionStateRoot: URL = URL(fileURLWithPath: NSString(string: "~/.copilot/session-state").expandingTildeInPath)
+    var sessionStateRoot: URL = URL(
+        fileURLWithPath: NSString(string: "~/.copilot/session-state").expandingTildeInPath)
 
     func read(limits: Limits, now: Date = .now) -> ProviderSummary? {
         guard FileManager.default.fileExists(atPath: sessionStateRoot.path) else { return nil }
@@ -40,7 +41,8 @@ struct CopilotUsageReader: Sendable {
 
     private func sumPremiumRequests(since cutoff: Date) -> Int {
         let fm = FileManager.default
-        guard let subdirs = try? fm.contentsOfDirectory(at: sessionStateRoot, includingPropertiesForKeys: nil) else {
+        guard let subdirs = try? fm.contentsOfDirectory(at: sessionStateRoot, includingPropertiesForKeys: nil)
+        else {
             return 0
         }
         let iso = ISO8601DateFormatter()
@@ -56,16 +58,17 @@ struct CopilotUsageReader: Sendable {
 
     private func premiumRequests(in url: URL, since cutoff: Date, iso: ISO8601DateFormatter) -> Int {
         guard let data = try? Data(contentsOf: url),
-              let text = String(data: data, encoding: .utf8) else {
+            let text = String(data: data, encoding: .utf8)
+        else {
             return 0
         }
 
         var total = 0
         text.enumerateLines { line, _ in
             guard !line.isEmpty,
-                  let lineData = line.data(using: .utf8),
-                  let raw = try? JSONSerialization.jsonObject(with: lineData) as? [String: Any],
-                  (raw["type"] as? String) == "session.shutdown"
+                let lineData = line.data(using: .utf8),
+                let raw = try? JSONSerialization.jsonObject(with: lineData) as? [String: Any],
+                (raw["type"] as? String) == "session.shutdown"
             else { return }
 
             let tsString = (raw["timestamp"] as? String) ?? ""

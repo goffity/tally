@@ -99,7 +99,7 @@ struct ClaudeUsageReader: Sendable {
                 used: weeklySonnet,
                 limit: limits.weeklySonnetTokens,
                 resetsAt: weeklyReset
-            )
+            ),
         ]
         return ProviderSummary(provider: .claude, snapshots: snapshots)
     }
@@ -114,7 +114,9 @@ struct ClaudeUsageReader: Sendable {
 
     private func loadEvents() -> [AssistantEvent] {
         let fm = FileManager.default
-        guard let enumerator = fm.enumerator(at: projectsRoot, includingPropertiesForKeys: [.isRegularFileKey]) else {
+        guard
+            let enumerator = fm.enumerator(at: projectsRoot, includingPropertiesForKeys: [.isRegularFileKey])
+        else {
             return []
         }
         var events: [AssistantEvent] = []
@@ -126,7 +128,8 @@ struct ClaudeUsageReader: Sendable {
 
     private func parse(file url: URL) -> [AssistantEvent] {
         guard let data = try? Data(contentsOf: url),
-              let text = String(data: data, encoding: .utf8) else {
+            let text = String(data: data, encoding: .utf8)
+        else {
             return []
         }
         let iso = ISO8601DateFormatter()
@@ -137,8 +140,8 @@ struct ClaudeUsageReader: Sendable {
 
         text.enumerateLines { line, _ in
             guard !line.isEmpty,
-                  let lineData = line.data(using: .utf8),
-                  let raw = try? JSONSerialization.jsonObject(with: lineData) as? [String: Any]
+                let lineData = line.data(using: .utf8),
+                let raw = try? JSONSerialization.jsonObject(with: lineData) as? [String: Any]
             else { return }
 
             guard (raw["type"] as? String) == "assistant" else { return }
@@ -149,7 +152,8 @@ struct ClaudeUsageReader: Sendable {
             let cacheCreate = (usage["cache_creation_input_tokens"] as? Double) ?? 0
             let cacheRead = (usage["cache_read_input_tokens"] as? Double) ?? 0
             let outTok = (usage["output_tokens"] as? Double) ?? 0
-            let total = inTok * Self.inputWeight
+            let total =
+                inTok * Self.inputWeight
                 + cacheCreate * Self.cacheCreateWeight
                 + cacheRead * Self.cacheReadWeight
                 + outTok * Self.outputWeight

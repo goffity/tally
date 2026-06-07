@@ -76,11 +76,13 @@ struct CodexUsageReader: Sendable {
         case 60..<1440: baseSubtitle = "\(limit.windowMinutes / 60)-hour window"
         default: baseSubtitle = "\(limit.windowMinutes / 1440)-day window"
         }
-        let subtitle = isStale
+        let subtitle =
+            isStale
             ? "\(baseSubtitle.isEmpty ? subtitleFallback : baseSubtitle) · no recent usage"
             : (baseSubtitle.isEmpty ? subtitleFallback : baseSubtitle)
 
-        let window: UsageWindow = limit.windowMinutes >= 1440
+        let window: UsageWindow =
+            limit.windowMinutes >= 1440
             ? .rollingHours(limit.windowMinutes / 60)
             : .rollingHours(max(1, limit.windowMinutes / 60))
 
@@ -89,7 +91,7 @@ struct CodexUsageReader: Sendable {
             title: title,
             subtitle: subtitle,
             window: window,
-            used: 0, // Codex events don't carry per-window token sums; only %.
+            used: 0,  // Codex events don't carry per-window token sums; only %.
             limit: 0,
             unit: .tokens,
             resetsAt: resets,
@@ -114,10 +116,12 @@ struct CodexUsageReader: Sendable {
 
     private func locateLatestEvent() -> LatestEvent? {
         let fm = FileManager.default
-        guard let enumerator = fm.enumerator(
-            at: sessionsRoot,
-            includingPropertiesForKeys: [.contentModificationDateKey]
-        ) else { return nil }
+        guard
+            let enumerator = fm.enumerator(
+                at: sessionsRoot,
+                includingPropertiesForKeys: [.contentModificationDateKey]
+            )
+        else { return nil }
 
         // Walk every jsonl, find the newest `token_count` event by event timestamp.
         var newest: LatestEvent?
@@ -133,7 +137,8 @@ struct CodexUsageReader: Sendable {
 
     private func lastTokenCountEvent(in url: URL) -> LatestEvent? {
         guard let data = try? Data(contentsOf: url),
-              let text = String(data: data, encoding: .utf8) else {
+            let text = String(data: data, encoding: .utf8)
+        else {
             return nil
         }
         let iso = ISO8601DateFormatter()
@@ -142,11 +147,11 @@ struct CodexUsageReader: Sendable {
         var latest: LatestEvent?
         text.enumerateLines { line, _ in
             guard !line.isEmpty,
-                  let lineData = line.data(using: .utf8),
-                  let raw = try? JSONSerialization.jsonObject(with: lineData) as? [String: Any],
-                  (raw["type"] as? String) == "event_msg",
-                  let payload = raw["payload"] as? [String: Any],
-                  (payload["type"] as? String) == "token_count"
+                let lineData = line.data(using: .utf8),
+                let raw = try? JSONSerialization.jsonObject(with: lineData) as? [String: Any],
+                (raw["type"] as? String) == "event_msg",
+                let payload = raw["payload"] as? [String: Any],
+                (payload["type"] as? String) == "token_count"
             else { return }
 
             let info = payload["info"] as? [String: Any]
@@ -173,9 +178,10 @@ struct CodexUsageReader: Sendable {
 
     private func parseRateLimit(_ dict: [String: Any]?) -> RateLimit? {
         guard let dict,
-              let used = dict["used_percent"] as? Double,
-              let window = dict["window_minutes"] as? Int,
-              let resets = dict["resets_in_seconds"] as? Double else { return nil }
+            let used = dict["used_percent"] as? Double,
+            let window = dict["window_minutes"] as? Int,
+            let resets = dict["resets_in_seconds"] as? Double
+        else { return nil }
         return RateLimit(
             usedPercent: used,
             windowMinutes: window,

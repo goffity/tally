@@ -8,11 +8,11 @@ struct UsageSnapshot: Identifiable, Hashable {
 
     let id: UUID
     let provider: Provider
-    let title: String           // e.g. "Session", "Weekly", "Weekly · Sonnet"
-    let subtitle: String        // e.g. "5-hour window", "all models"
+    let title: String  // e.g. "Session", "Weekly", "Weekly · Sonnet"
+    let subtitle: String  // e.g. "5-hour window", "all models"
     let window: UsageWindow
-    let used: Double            // tokens or requests consumed in window
-    let limit: Double           // configured cap for this window (0 when unknown)
+    let used: Double  // tokens or requests consumed in window
+    let limit: Double  // configured cap for this window (0 when unknown)
     let unit: Unit
     let resetsAt: Date
     let isEstimate: Bool
