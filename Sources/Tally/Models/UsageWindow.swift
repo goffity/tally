@@ -1,10 +1,10 @@
 import Foundation
 
 enum UsageWindow: Hashable {
-    case rollingHours(Int)        // e.g. Claude 5h session
-    case calendarWeek             // resets Monday 00:00 local
-    case calendarDay              // resets at next local midnight
-    case calendarMonth            // resets on the 1st
+    case rollingHours(Int)  // e.g. Claude 5h session
+    case calendarWeek  // resets Monday 00:00 local
+    case calendarDay  // resets at next local midnight
+    case calendarMonth  // resets on the 1st
 
     var label: String {
         switch self {
@@ -21,7 +21,7 @@ enum UsageWindow: Hashable {
             return now.addingTimeInterval(-Double(h) * 3600)
         case .calendarWeek:
             var cal = calendar
-            cal.firstWeekday = 2 // Monday
+            cal.firstWeekday = 2  // Monday
             let comps = cal.dateComponents([.yearForWeekOfYear, .weekOfYear], from: now)
             return cal.date(from: comps) ?? now
         case .calendarDay:
@@ -39,11 +39,14 @@ enum UsageWindow: Hashable {
             // Without per-event data here we approximate as windowStart + h, callers can override.
             return windowStart(now: now, calendar: calendar).addingTimeInterval(Double(h) * 3600)
         case .calendarWeek:
-            return calendar.date(byAdding: .weekOfYear, value: 1, to: windowStart(now: now, calendar: calendar)) ?? now
+            return calendar.date(
+                byAdding: .weekOfYear, value: 1, to: windowStart(now: now, calendar: calendar)) ?? now
         case .calendarDay:
-            return calendar.date(byAdding: .day, value: 1, to: windowStart(now: now, calendar: calendar)) ?? now
+            return calendar.date(byAdding: .day, value: 1, to: windowStart(now: now, calendar: calendar))
+                ?? now
         case .calendarMonth:
-            return calendar.date(byAdding: .month, value: 1, to: windowStart(now: now, calendar: calendar)) ?? now
+            return calendar.date(byAdding: .month, value: 1, to: windowStart(now: now, calendar: calendar))
+                ?? now
         }
     }
 }

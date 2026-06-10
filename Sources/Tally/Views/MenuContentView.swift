@@ -1,5 +1,5 @@
-import SwiftUI
 import AppKit
+import SwiftUI
 
 struct MenuContentView: View {
     let store: UsageStore
@@ -17,7 +17,8 @@ struct MenuContentView: View {
         .frame(width: 340)
         .onChange(of: store.summaries) { _, summaries in
             if !summaries.contains(where: { $0.provider == selectedProvider }),
-               let first = summaries.first?.provider {
+                let first = summaries.first?.provider
+            {
                 selectedProvider = first
             }
         }
@@ -38,6 +39,10 @@ struct MenuContentView: View {
                     VStack(alignment: .leading, spacing: 16) {
                         ForEach(summary.snapshots) { snapshot in
                             UsageBarRow(snapshot: snapshot)
+                        }
+                        if summary.provider == .claude, !store.claudeModelBreakdown.isEmpty {
+                            Divider()
+                            ModelBreakdownSection(entries: store.claudeModelBreakdown)
                         }
                     }
                 }

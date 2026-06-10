@@ -38,7 +38,7 @@ final class RefreshScheduler {
         let watchedPaths = [
             "\(home)/.claude/projects",
             "\(home)/.codex/sessions",
-            "\(home)/.gemini/tmp"
+            "\(home)/.gemini/tmp",
         ]
 
         watcher = FileSystemWatcher(paths: watchedPaths) { [weak self] in
@@ -64,7 +64,8 @@ final class RefreshScheduler {
 
     private func scheduleDebouncedRefresh() {
         debounceTimer?.invalidate()
-        debounceTimer = Timer.scheduledTimer(withTimeInterval: debounceDelay, repeats: false) { [weak self] _ in
+        debounceTimer = Timer.scheduledTimer(withTimeInterval: debounceDelay, repeats: false) {
+            [weak self] _ in
             Task { @MainActor in self?.store?.refresh() }
         }
     }

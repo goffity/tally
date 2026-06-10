@@ -1,5 +1,5 @@
-import Foundation
 import CoreServices
+import Foundation
 
 /// Lightweight FSEvents wrapper. Calls `onChange` (on the main queue) whenever
 /// any file under the watched paths is created, modified, or removed. Callers
@@ -36,8 +36,7 @@ final class FileSystemWatcher {
         }
 
         let flags = UInt32(
-            kFSEventStreamCreateFlagFileEvents |
-            kFSEventStreamCreateFlagNoDefer
+            kFSEventStreamCreateFlagFileEvents | kFSEventStreamCreateFlagNoDefer
         )
 
         stream = FSEventStreamCreate(

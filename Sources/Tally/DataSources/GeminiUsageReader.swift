@@ -25,11 +25,12 @@ struct GeminiUsageReader: Sendable {
         let userMessagesInWindow = countUserMessages(since: dayStart)
 
         let calendar = Calendar.current
-        let nextMidnight = calendar.date(
-            byAdding: .day,
-            value: 1,
-            to: calendar.startOfDay(for: now)
-        ) ?? now
+        let nextMidnight =
+            calendar.date(
+                byAdding: .day,
+                value: 1,
+                to: calendar.startOfDay(for: now)
+            ) ?? now
 
         let snapshot = UsageSnapshot(
             provider: .gemini,
@@ -47,14 +48,17 @@ struct GeminiUsageReader: Sendable {
 
     private func countUserMessages(since cutoff: Date) -> Int {
         let fm = FileManager.default
-        guard let enumerator = fm.enumerator(at: sessionsRoot, includingPropertiesForKeys: [.isRegularFileKey]) else {
+        guard
+            let enumerator = fm.enumerator(at: sessionsRoot, includingPropertiesForKeys: [.isRegularFileKey])
+        else {
             return 0
         }
         let iso = ISO8601DateFormatter()
         iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
 
         var total = 0
-        for case let url as URL in enumerator where url.lastPathComponent.hasPrefix("session-") && url.pathExtension == "json" {
+        for case let url as URL in enumerator
+        where url.lastPathComponent.hasPrefix("session-") && url.pathExtension == "json" {
             total += countUserMessages(in: url, since: cutoff, iso: iso)
         }
         return total
@@ -62,17 +66,19 @@ struct GeminiUsageReader: Sendable {
 
     private func countUserMessages(in url: URL, since cutoff: Date, iso: ISO8601DateFormatter) -> Int {
         guard let data = try? Data(contentsOf: url),
-              let raw = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let messages = raw["messages"] as? [[String: Any]] else {
+            let raw = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+            let messages = raw["messages"] as? [[String: Any]]
+        else {
             return 0
         }
 
         var count = 0
         for message in messages {
             guard (message["type"] as? String) == "user",
-                  let tsString = message["timestamp"] as? String,
-                  let ts = iso.date(from: tsString),
-                  ts >= cutoff else { continue }
+                let tsString = message["timestamp"] as? String,
+                let ts = iso.date(from: tsString),
+                ts >= cutoff
+            else { continue }
             count += 1
         }
         return count

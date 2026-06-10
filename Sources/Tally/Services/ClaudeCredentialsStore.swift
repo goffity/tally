@@ -16,7 +16,8 @@ struct ClaudeCredentialsStore: Sendable {
     }
 
     var keychainService: String = "Claude Code-credentials"
-    var credentialsURL: URL = URL(fileURLWithPath: NSString(string: "~/.claude/.credentials.json").expandingTildeInPath)
+    var credentialsURL: URL = URL(
+        fileURLWithPath: NSString(string: "~/.claude/.credentials.json").expandingTildeInPath)
 
     func load() -> Credentials? {
         if let creds = decode(loadFromKeychain()) {
@@ -32,7 +33,7 @@ struct ClaudeCredentialsStore: Sendable {
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: keychainService,
             kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne
+            kSecMatchLimit as String: kSecMatchLimitOne,
         ]
         var item: CFTypeRef?
         let status = SecItemCopyMatching(query as CFDictionary, &item)
@@ -50,10 +51,10 @@ struct ClaudeCredentialsStore: Sendable {
 
     private func decode(_ data: Data?) -> Credentials? {
         guard let data,
-              let raw = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let oauth = raw["claudeAiOauth"] as? [String: Any],
-              let accessToken = oauth["accessToken"] as? String,
-              !accessToken.isEmpty
+            let raw = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+            let oauth = raw["claudeAiOauth"] as? [String: Any],
+            let accessToken = oauth["accessToken"] as? String,
+            !accessToken.isEmpty
         else { return nil }
 
         let refreshToken = oauth["refreshToken"] as? String
