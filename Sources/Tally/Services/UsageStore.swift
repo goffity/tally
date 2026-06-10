@@ -20,6 +20,9 @@ final class UsageStore {
     }
 
     private(set) var summaries: [ProviderSummary] = []
+    /// Trailing-7-day per-model split, always counted from local logs — the
+    /// official endpoint only reports aggregate percentages per bucket.
+    private(set) var claudeModelBreakdown: [ClaudeUsageReader.ModelUsage] = []
     private(set) var lastUpdated: Date?
     private(set) var isRefreshing: Bool = false
     private(set) var sources: [Provider: Source] = [:]
@@ -73,11 +76,18 @@ final class UsageStore {
                 return optionals.compactMap { $0 }
             }.value
 
+            // Per-model split comes from local logs even when the official
+            // endpoint drives the window bars — the API has no per-model data.
+            let breakdown = await Task.detached(priority: .userInitiated) {
+                localClaude.modelBreakdown()
+            }.value
+
             var summariesNext: [ProviderSummary] = []
             if let claudeSummary { summariesNext.append(claudeSummary) }
             summariesNext.append(contentsOf: others)
 
             self.summaries = summariesNext
+            self.claudeModelBreakdown = breakdown
             self.sources = [
                 .claude: claudeSource,
                 .codex: .localOnly,

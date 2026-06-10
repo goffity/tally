@@ -40,6 +40,10 @@ struct MenuContentView: View {
                         ForEach(summary.snapshots) { snapshot in
                             UsageBarRow(snapshot: snapshot)
                         }
+                        if summary.provider == .claude, !store.claudeModelBreakdown.isEmpty {
+                            Divider()
+                            ModelBreakdownSection(entries: store.claudeModelBreakdown)
+                        }
                     }
                 }
             }

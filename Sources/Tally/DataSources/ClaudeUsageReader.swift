@@ -104,6 +104,47 @@ struct ClaudeUsageReader: Sendable {
         return ProviderSummary(provider: .claude, snapshots: snapshots)
     }
 
+    // MARK: - Per-model breakdown
+
+    /// Cost-weighted token usage for one model over the trailing 7-day window.
+    struct ModelUsage: Identifiable, Hashable, Sendable {
+        let model: String  // raw ID, e.g. "claude-fable-5"
+        let tokens: Double  // cost-weighted, same unit as the window snapshots
+        let share: Double  // 0…1 fraction of the weekly total
+
+        var id: String { model }
+
+        /// "claude-opus-4-8[1m]" -> "Opus 4.8"; unknown shapes pass through unchanged.
+        var displayName: String { Self.prettify(model) }
+
+        static func prettify(_ raw: String) -> String {
+            var s = raw
+            if let bracket = s.firstIndex(of: "[") { s = String(s[..<bracket]) }
+            let parts = s.split(separator: "-")
+            guard parts.first == "claude", parts.count >= 2 else { return raw }
+            let family = parts[1].prefix(1).uppercased() + parts[1].dropFirst()
+            // Drop date-stamp suffixes like "20251001" from pinned IDs.
+            let version = parts.dropFirst(2).filter { $0.count < 8 }.joined(separator: ".")
+            return version.isEmpty ? String(family) : "\(family) \(version)"
+        }
+    }
+
+    /// Per-model weighted token totals for the trailing 7 days, largest first.
+    func modelBreakdown(now: Date = .now) -> [ModelUsage] {
+        let weekStart = now.addingTimeInterval(-7 * 24 * 3600)
+        var totals: [String: Double] = [:]
+        for ev in loadEvents()
+        where ev.timestamp >= weekStart && !ev.model.isEmpty && !ev.model.hasPrefix("<") {
+            totals[ev.model, default: 0] += ev.totalTokens
+        }
+        let all = totals.values.reduce(0, +)
+        guard all > 0 else { return [] }
+        return
+            totals
+            .map { ModelUsage(model: $0.key, tokens: $0.value, share: $0.value / all) }
+            .sorted { $0.tokens > $1.tokens }
+    }
+
     // MARK: - JSONL parsing
 
     private struct AssistantEvent {

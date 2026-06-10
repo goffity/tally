@@ -80,7 +80,7 @@ struct UsageBarRow: View {
         return f
     }()
 
-    private static func compactTokens(_ value: Double) -> String {
+    static func compactTokens(_ value: Double) -> String {
         let abs = Swift.abs(value)
         switch abs {
         case 0..<1_000:
