@@ -110,12 +110,21 @@ final class UsageStore {
             relayStatus = nil
             return
         }
+        // Keychain save trims the token, but the in-memory Settings value may
+        // still carry pasted whitespace — trim at point of use so the
+        // Authorization header is correct before app restart.
+        let token = settings.relayToken.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let summary,
             !settings.relayEndpointURL.isEmpty,
             let endpoint = URL(string: settings.relayEndpointURL),
-            !settings.relayToken.isEmpty
+            !token.isEmpty
         else {
             relayStatus = "not configured"
+            return
+        }
+        // Never send the bearer token over plaintext or to a malformed URL.
+        guard endpoint.scheme?.lowercased() == "https", endpoint.host != nil else {
+            relayStatus = "relay URL must be https"
             return
         }
 
@@ -128,7 +137,7 @@ final class UsageStore {
         guard payload.contentKey != lastPublishedKey else { return }
 
         let publisher = relayPublisher
-        let config = RelayPublisher.Config(endpoint: endpoint, token: settings.relayToken)
+        let config = RelayPublisher.Config(endpoint: endpoint, token: token)
         let key = payload.contentKey
 
         Task { [weak self] in

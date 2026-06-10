@@ -41,21 +41,38 @@ enum ClaudeCodeEnvironment {
         return candidates.first { FileManager.default.isExecutableFile(atPath: $0) }
     }
 
+    /// Hard cap on the CLI run — a wedged `claude --version` must not stall
+    /// the first usage refresh (`version` resolves lazily on first access).
+    private static let runTimeout: TimeInterval = 5
+
     private static func run(_ path: String, _ args: [String]) -> String? {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: path)
         process.arguments = args
         let stdout = Pipe()
         process.standardOutput = stdout
-        process.standardError = Pipe()  // swallow stderr noise
+        // Discard stderr — an undrained Pipe can fill its buffer and deadlock
+        // the child once it writes more than the pipe holds.
+        process.standardError = FileHandle.nullDevice
         do {
             try process.run()
         } catch {
             return nil
         }
-        let data = stdout.fileHandleForReading.readDataToEndOfFile()
-        process.waitUntilExit()
+
+        // Poll instead of waitUntilExit() so a hung CLI can't block forever.
+        let deadline = Date().addingTimeInterval(runTimeout)
+        while process.isRunning, Date() < deadline {
+            usleep(50_000)  // 50ms
+        }
+        if process.isRunning {
+            process.terminate()
+            return nil
+        }
         guard process.terminationStatus == 0 else { return nil }
+        // Safe to read after exit: `--version` output is far below the pipe
+        // buffer size, so the child never blocks on an unread pipe.
+        let data = stdout.fileHandleForReading.readDataToEndOfFile()
         return String(data: data, encoding: .utf8)
     }
 
